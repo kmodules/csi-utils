@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	k8s.io/apimachinery v0.25.1
 	k8s.io/klog/v2 v2.80.1
-	kmodules.xyz/client-go v0.25.1
+	kmodules.xyz/client-go v0.25.3
 )
 
 require (
