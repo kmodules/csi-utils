@@ -15,8 +15,10 @@ import (
 	"kmodules.xyz/client-go/discovery"
 )
 
+const kindVolumeSnapshot = "VolumeSnapshot"
+
 func CreateOrPatchVolumeSnapshot(ctx context.Context, c cs.Interface, meta metav1.ObjectMeta, transform func(*apiv1.VolumeSnapshot) *apiv1.VolumeSnapshot, opts metav1.PatchOptions) (*apiv1.VolumeSnapshot, kutil.VerbType, error) {
-	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), "VolumeSnapshot") {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
 		return v1.CreateOrPatchVolumeSnapshot(ctx, c, meta, transform, opts)
 	}
 
@@ -37,8 +39,19 @@ func CreateOrPatchVolumeSnapshot(ctx context.Context, c cs.Interface, meta metav
 	return convert_v1beta1_to_v1(p), vt, nil
 }
 
+func CreateVolumeSnapshot(ctx context.Context, c cs.Interface, in *apiv1.VolumeSnapshot) (*apiv1.VolumeSnapshot, error) {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
+		return c.SnapshotV1().VolumeSnapshots(in.Namespace).Create(ctx, in, metav1.CreateOptions{})
+	}
+	result, err := c.SnapshotV1beta1().VolumeSnapshots(in.Namespace).Create(ctx, convert_v1_to_v1beta1(in), metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return convert_v1beta1_to_v1(result), nil
+}
+
 func GetVolumeSnapshot(ctx context.Context, c cs.Interface, meta types.NamespacedName) (*apiv1.VolumeSnapshot, error) {
-	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), "VolumeSnapshot") {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
 		return c.SnapshotV1().VolumeSnapshots(meta.Namespace).Get(ctx, meta.Name, metav1.GetOptions{})
 	}
 	result, err := c.SnapshotV1beta1().VolumeSnapshots(meta.Namespace).Get(ctx, meta.Name, metav1.GetOptions{})
@@ -49,7 +62,7 @@ func GetVolumeSnapshot(ctx context.Context, c cs.Interface, meta types.Namespace
 }
 
 func DeleteVolumeSnapshot(ctx context.Context, c cs.Interface, meta types.NamespacedName) error {
-	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), "VolumeSnapshot") {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
 		return c.SnapshotV1().VolumeSnapshots(meta.Namespace).Delete(ctx, meta.Name, metav1.DeleteOptions{})
 	}
 	return c.SnapshotV1beta1().VolumeSnapshots(meta.Namespace).Delete(ctx, meta.Name, metav1.DeleteOptions{})
