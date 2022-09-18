@@ -2,6 +2,7 @@ package batch
 
 import (
 	"context"
+	"time"
 
 	v1 "kmodules.xyz/csi-utils/volumesnapshot/v1"
 	"kmodules.xyz/csi-utils/volumesnapshot/v1beta1"
@@ -11,6 +12,7 @@ import (
 	cs "github.com/kubernetes-csi/external-snapshotter/client/v4/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	kutil "kmodules.xyz/client-go"
 	"kmodules.xyz/client-go/discovery"
 )
@@ -61,11 +63,48 @@ func GetVolumeSnapshot(ctx context.Context, c cs.Interface, meta types.Namespace
 	return convert_v1beta1_to_v1(result), nil
 }
 
+func ListVolumeSnapshot(ctx context.Context, c cs.Interface, ns string, opts metav1.ListOptions) (*apiv1.VolumeSnapshotList, error) {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
+		return c.SnapshotV1().VolumeSnapshots(ns).List(ctx, opts)
+	}
+	result, err := c.SnapshotV1beta1().VolumeSnapshots(ns).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := apiv1.VolumeSnapshotList{
+		TypeMeta: result.TypeMeta,
+		ListMeta: result.ListMeta,
+		Items:    make([]apiv1.VolumeSnapshot, 0, len(result.Items)),
+	}
+	for _, item := range result.Items {
+		out.Items = append(out.Items, *convert_v1beta1_to_v1(&item))
+	}
+	return &out, nil
+}
+
 func DeleteVolumeSnapshot(ctx context.Context, c cs.Interface, meta types.NamespacedName) error {
 	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
 		return c.SnapshotV1().VolumeSnapshots(meta.Namespace).Delete(ctx, meta.Name, metav1.DeleteOptions{})
 	}
 	return c.SnapshotV1beta1().VolumeSnapshots(meta.Namespace).Delete(ctx, meta.Name, metav1.DeleteOptions{})
+}
+
+func WaitUntilVolumeSnapshotReady(c cs.Interface, meta types.NamespacedName) error {
+	if discovery.ExistsGroupVersionKind(c.Discovery(), apiv1.SchemeGroupVersion.String(), kindVolumeSnapshot) {
+		return wait.PollImmediate(kutil.RetryInterval, 2*time.Hour, func() (bool, error) {
+			if obj, err := c.SnapshotV1().VolumeSnapshots(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{}); err == nil {
+				return obj.Status != nil && obj.Status.ReadyToUse != nil && *obj.Status.ReadyToUse, nil
+			}
+			return false, nil
+		})
+	}
+
+	return wait.PollImmediate(kutil.RetryInterval, 2*time.Hour, func() (bool, error) {
+		if obj, err := c.SnapshotV1beta1().VolumeSnapshots(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{}); err == nil {
+			return obj.Status != nil && obj.Status.ReadyToUse != nil && *obj.Status.ReadyToUse, nil
+		}
+		return false, nil
+	})
 }
 
 func convert_v1beta1_to_v1(in *apiv1beta1.VolumeSnapshot) *apiv1.VolumeSnapshot {
