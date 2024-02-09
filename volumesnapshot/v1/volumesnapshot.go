@@ -81,7 +81,7 @@ func PatchVolumeSnapshotObject(ctx context.Context, c cs.Interface, cur, mod *ap
 
 func TryUpdateVolumeSnapshot(ctx context.Context, c cs.Interface, meta metav1.ObjectMeta, transform func(*api.VolumeSnapshot) *api.VolumeSnapshot, opts metav1.UpdateOptions) (result *api.VolumeSnapshot, err error) {
 	attempt := 0
-	err = wait.PollImmediate(kutil.RetryInterval, kutil.RetryTimeout, func() (bool, error) {
+	err = wait.PollUntilContextTimeout(ctx, kutil.RetryInterval, kutil.RetryTimeout, true, func(ctx context.Context) (bool, error) {
 		attempt++
 		cur, e2 := c.SnapshotV1().VolumeSnapshots(meta.Namespace).Get(ctx, meta.Name, metav1.GetOptions{})
 		if apierrors.IsNotFound(e2) {
