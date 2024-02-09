@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	api "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
@@ -98,4 +99,13 @@ func TryUpdateVolumeSnapshot(ctx context.Context, c cs.Interface, meta metav1.Ob
 		err = errors.Errorf("failed to update VolumeSnapshot %s/%s after %d attempts due to %v", meta.Namespace, meta.Name, attempt, err)
 	}
 	return
+}
+
+func WaitUntilVolumeSnapshotReady(c cs.Interface, meta types.NamespacedName) error {
+	return wait.PollUntilContextTimeout(context.TODO(), kutil.RetryInterval, 2*time.Hour, true, func(ctx context.Context) (bool, error) {
+		if obj, err := c.SnapshotV1().VolumeSnapshots(meta.Namespace).Get(context.TODO(), meta.Name, metav1.GetOptions{}); err == nil {
+			return obj.Status != nil && obj.Status.ReadyToUse != nil && *obj.Status.ReadyToUse, nil
+		}
+		return false, nil
+	})
 }
