@@ -94,7 +94,6 @@ func TryUpdateVolumeSnapshot(ctx context.Context, c cs.Interface, meta metav1.Ob
 		klog.Errorf("Attempt %d failed to update VolumeSnapshot %s/%s due to %v.", attempt, cur.Namespace, cur.Name, e2)
 		return false, nil
 	})
-
 	if err != nil {
 		err = errors.Errorf("failed to update VolumeSnapshot %s/%s after %d attempts due to %v", meta.Namespace, meta.Name, attempt, err)
 	}
