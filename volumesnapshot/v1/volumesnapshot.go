@@ -21,8 +21,8 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
-	api "github.com/kubernetes-csi/external-snapshotter/client/v7/apis/volumesnapshot/v1"
-	cs "github.com/kubernetes-csi/external-snapshotter/client/v7/clientset/versioned"
+	api "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
+	cs "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
